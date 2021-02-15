@@ -1,86 +1,41 @@
-on: [push]
+name: CI
 
-name: build
+on:
+  pull_request:
+  push:
+    branches:
+      # You probably don't need both of these.
+      - main
+      - master
+
+env:
+  RUST_BACKTRACE: 1
 
 jobs:
-  check:
-    name: NewsLetter
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: nightly
-            override: true
-            components: rustfmt, clippy
-
-      # `cargo check` command here will use installed `nightly`
-      # as it is set as an "override" for current directory
-
-      - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-
-  test-mac-win:
+  test:
     name: Test Rust ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-        - { rust: stable,            os: macos-latest }
-        - { rust: stable,            os: windows-latest }
-        - { rust: stable-x86_64-gnu, os: windows-latest }
+          - { rust: stable,           os: ubuntu-latest }
+          - { rust: stable,           os: macos-latest }
+          - { rust: stable,           os: windows-latest }
+          - { rust: stable-i686-msvc, os: windows-latest }
+          - { rust: beta,             os: ubuntu-latest }
+          - { rust: nightly,          os: ubuntu-latest }
     steps:
       - uses: actions/checkout@v2
       - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: ${{ matrix.rust }}
+      - run: cargo test --verbose --workspace
       - run: cargo test --verbose --workspace --all-features
       - run: cargo test --verbose --workspace --no-default-features
 
-  sanitizer-test:
-    name: Test with -Zsanitizer=${{ matrix.sanitizer }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        sanitizer: [address, memory, thread, leak]
-    steps:
-      - uses: actions/checkout@v2
-      - uses: hecrj/setup-rust-action@v1
-        with:
-          rust-version: nightly
-          components: rust-src
-      - name: Test with sanitizer
-        env:
-          RUSTFLAGS: -Zsanitizer=${{ matrix.sanitizer }}
-          RUSTDOCFLAGS: -Zsanitizer=${{ matrix.sanitizer }}
-          # only needed by asan
-          ASAN_OPTIONS: detect_stack_use_after_return=1
-          # Asan's leak detection occasionally complains
-          # about some small leaks if backtraces are captured,
-          # so ensure they're not
-          RUST_BACKTRACE: 0
-      run: |
-        cargo test -Zbuild-std --verbose --target=x86_64-unknown-linux-gnu --no-default-features
-        cargo test -Zbuild-std --verbose --target=x86_64-unknown-linux-gnu --all-features
-
-  cargo-check:
-    name: Check for warnings
-    runs-on: ubuntu-latest
-    env:
-      RUSTFLAGS: -Dwarnings
-    steps:
-      - uses: actions/checkout@v2
-      - uses: hecrj/setup-rust-action@v1
-      - run: cargo check --workspace --all-targets --verbose --no-default-features
-      - run: cargo check --workspace --all-targets --verbose --all-features
-
   clippy:
-    name: Lint with Clippy
+    name: Lint with clippy
     runs-on: ubuntu-latest
     env:
       RUSTFLAGS: -Dwarnings
@@ -89,6 +44,7 @@ jobs:
       - uses: hecrj/setup-rust-action@v1
         with:
           components: clippy
+      - run: cargo clippy --workspace --all-targets --verbose
       - run: cargo clippy --workspace --all-targets --verbose --no-default-features
       - run: cargo clippy --workspace --all-targets --verbose --all-features
 
@@ -102,39 +58,3 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
-  check-rustdoc-links:
-    name: Check intra-doc links
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: hecrj/setup-rust-action@v1
-        with:
-          rust-version: nightly
-      # Important: This doesn't work for multi-crate workspaces, which
-      # will require you call `cargo rustdoc -p` for each package! (See below)
-      # (Also, note that this is `cargo rustdoc` and not `cargo doc`)
-      - run: cargo rustdoc --all-features -- -D warnings
-
-  codecov-grcov:
-    name: Generate code coverage
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: hecrj/setup-rust-action@v1
-        with:
-          rust-version: nightly
-      - name: Run test for coverage
-        env:
-          CARGO_INCREMENTAL: 0
-          RUSTFLAGS: -Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort
-          RUSTDOCFLAGS: -Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort
-        run: |
-          cargo test --workspace --all-features --verbose
-          cargo test --workspace --no-default-features --verbose
-          # If you need to test multiple feature sets, add
-         # those tests calls here too
-      - uses: actions-rs/grcov@v0.1
-      # Note: closed-source code needs to provide a token,
-      # but open source code does not.
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v1 
