@@ -27,13 +27,12 @@ jobs:
       - fmt
       - clippy
       - docs
-      - loom
       - valgrind
     steps:
       - run: exit 0
 
   test:
-    name: test tokio full
+    name: test full
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -98,26 +97,6 @@ jobs:
       - name: Install Rust
         run: rustup update stable
 
-  miri:
-    name: miri
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ env.nightly }}
-          override: true
-      - name: Install Miri
-        run: |
-          set -e
-          rustup component add miri
-          cargo miri setup
-          rm -rf tokio/tests
-
-      - name: miri
-        run: cargo miri test --features rt,rt-multi-thread,sync task
-        working-directory: src
-
   cross:
     name: cross
     runs-on: ubuntu-latest
@@ -156,12 +135,6 @@ jobs:
 
       - name: check --each-feature
         run: cargo hack check --all --each-feature -Z avoid-dev-deps
-
-      # Try with unstable feature flags
-      - name: check --each-feature --unstable
-        run: cargo hack check --all --each-feature -Z avoid-dev-deps
-        env:
-          RUSTFLAGS: --cfg tokio_unstable -Dwarnings
 
   minrust:
     name: minrust
@@ -243,29 +216,4 @@ jobs:
         run: cargo doc --lib --no-deps --all-features
         env:
           RUSTDOCFLAGS: --cfg docsrs
-
-  loom:
-    name: loom
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        scope:
-          - --skip loom_pool
-          - loom_pool::group_a
-          - loom_pool::group_b
-          - loom_pool::group_c
-          - loom_pool::group_d
-          - time::driver
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install Rust
-        run: rustup update stable
-
-      - name: loom ${{ matrix.scope }}
-        run: cargo test --lib --release --features full -- --nocapture $SCOPE
-        working-directory: tokio
-        env:
-          RUSTFLAGS: --cfg loom --cfg tokio_unstable -Dwarnings
-          LOOM_MAX_PREEMPTIONS: 2
-          SCOPE: ${{ matrix.scope }}
 
