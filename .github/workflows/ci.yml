@@ -4,9 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      # You probably don't need both of these.
       - main
-      - master
 
 env:
   RUST_BACKTRACE: 1
