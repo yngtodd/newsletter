@@ -1,5 +1,5 @@
 use newsletter::configuration::get_configuration;
-use sqlx::{PgConnection, Connection};
+use sqlx::{Connection, PgConnection};
 use std::net::TcpListener;
 
 fn spawn_app() -> String {
