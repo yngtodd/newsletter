@@ -1,5 +1,5 @@
-use newsletter::startup::run;
 use newsletter::configuration::get_configuration;
+use newsletter::startup::run;
 use sqlx::PgPool;
 use std::net::TcpListener;
 
@@ -18,14 +18,11 @@ async fn spawn_app() -> TestApp {
     let db_pool = PgPool::connect(&config.database.connection_string())
         .await
         .expect("Failed to connect to Postgres");
-    
-    let server = run(listener,  db_pool.clone()).expect("Failed to bind address");
+
+    let server = run(listener, db_pool.clone()).expect("Failed to bind address");
     let _ = tokio::spawn(server);
 
-    TestApp {
-        address,
-        db_pool,
-    }
+    TestApp { address, db_pool }
 }
 
 #[actix_rt::test]
