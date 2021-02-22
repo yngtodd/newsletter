@@ -4,18 +4,17 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
-
 /// Compose multiple layers into a `tracing`'s subscriber
 ///
 /// Notes:
-/// 
-/// We are using `impl Subscriber` as a return type to avoid having to 
+///
+/// We are using `impl Subscriber` as a return type to avoid having to
 /// spell out the actual type of the returned subscriber, which is complex.
-/// We need to explicitly call out that the returned subscriber is 
+/// We need to explicitly call out that the returned subscriber is
 /// `Send` and `Sync` to make it possible to pass it to `init_subscriber`.
 pub fn get_subscriber(name: String, env_filter: String) -> impl Subscriber + Send + Sync {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(env_filter));
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(env_filter));
 
     let formatting_layer = BunyanFormattingLayer::new(name, std::io::stdout);
 
