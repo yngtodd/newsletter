@@ -1,6 +1,6 @@
 use newsletter::configuration::{get_configuration, DatabaseSettings};
-use newsletter::telemetry::{get_subscriber, init_subscriber};
 use newsletter::startup::run;
+use newsletter::telemetry::{get_subscriber, init_subscriber};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::net::TcpListener;
 use uuid::Uuid;
